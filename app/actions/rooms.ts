@@ -219,13 +219,24 @@ export async function resetVotingRound(formData: FormData) {
   const roomId = formData.get("roomId") as string;
 
   // Deleta os votos da rodada atual
-  await supabase.from("votes").delete().eq("story_id", storyId);
+  const { error: deleteError } = await supabase
+    .from("votes")
+    .delete()
+    .eq("story_id", storyId);
+
+  if (deleteError) {
+    return { error: "Erro ao limpar votos: " + deleteError.message };
+  }
 
   // Esconde os cards novamente
-  await supabase
+  const { error: updateError } = await supabase
     .from("stories")
     .update({ is_revealed: false })
     .eq("id", storyId);
+
+  if (updateError) {
+    return { error: "Erro ao reiniciar votação: " + updateError.message };
+  }
 
   revalidatePath(`/room/${roomId}`);
   return { success: true };

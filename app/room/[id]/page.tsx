@@ -1,26 +1,25 @@
-import { createServerClient } from "@/lib/supabase/server"
-import { RoomHeader } from "@/components/room/room-header"
-import { notFound } from "next/navigation"
-import { RoomClientView } from "@/components/room/room-client-view"
+import { RoomClientView } from "@/components/room/room-client-view";
+import { RoomHeader } from "@/components/room/room-header";
+import { createServerClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 
 type RoomPageProps = {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
-}
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
 
 export default async function RoomPage(props: RoomPageProps) {
   const searchParams = await props.searchParams;
   const params = await props.params;
 
-  const {
-    id
-  } = params;
+  const { id } = params;
 
-  const supabase = await createServerClient()
-  const participantId = typeof searchParams.pid === "string" ? searchParams.pid : undefined
+  const supabase = await createServerClient();
+  const participantId =
+    typeof searchParams.pid === "string" ? searchParams.pid : undefined;
 
   if (!participantId) {
-    return notFound()
+    return notFound();
   }
 
   // 1. Buscar dados do participante atual pelo seu ID único
@@ -28,18 +27,18 @@ export default async function RoomPage(props: RoomPageProps) {
     .from("participants")
     .select("id, name, is_moderator")
     .eq("id", participantId)
-    .eq("room_id", id) // Garante que o participante pertence a esta sala
-    .single()
+    .eq("room_id", id)
+    .single();
 
   if (participantError || !participant) {
-    return notFound()
+    return notFound();
   }
 
   // 2. Buscar todos os participantes da sala
   const { data: participants } = await supabase
     .from("participants")
     .select("id, name, is_moderator")
-    .eq("room_id", id)
+    .eq("room_id", id);
 
   // 3. Buscar a rodada de votação (story) ativa para a sala
   const { data: activeStory } = await supabase
@@ -48,15 +47,23 @@ export default async function RoomPage(props: RoomPageProps) {
     .eq("room_id", id)
     .order("created_at", { ascending: false })
     .limit(1)
-    .single()
+    .single();
 
   // 4. Buscar todos os votos para a rodada ativa
-  const { data: votes } = activeStory
+  const { data: votesData } = activeStory
     ? await supabase
         .from("votes")
-        .select("value, participant_id, participants(name)")
+        .select("value, participant_id, participants!inner(name)")
         .eq("story_id", activeStory.id)
-    : { data: [] }
+    : { data: [] };
+
+  const votes =
+    votesData?.map((vote) => ({
+      ...vote,
+      participants: Array.isArray(vote.participants)
+        ? vote.participants[0]
+        : vote.participants,
+    })) || [];
 
   return (
     // A estrutura flexível começa aqui
