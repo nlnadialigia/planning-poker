@@ -25,20 +25,19 @@ O projeto utiliza o Supabase para gerenciar o banco de dados e as funcionalidade
 ## ✨ Funcionalidades Principais
 
 ### Para todos os usuários
-
 - **Criação e Acesso a Salas**: Crie novas salas de votação ou acesse salas existentes.
+- **Nomes Únicos**: Cada participante na sala deve ter um nome único, evitando confusão.
+- **Avatares Coloridos**: Cada participante recebe uma cor única e vibrante (preta para o moderador), tornando a identificação visual mais fácil e agradável.
 - **Acesso via URL**: Cada participante possui uma URL única com um ID (`pid`) para identificação na sala.
-- **Nomes Duplicados**: Múltiplos participantes podem ter o mesmo nome na mesma sala.
 
-### Visão do Moderador
-
+### A Visão do Moderador
+- **Um Moderador por Sala**: Cada sala agora suporta apenas um moderador, garantindo um único ponto de controle.
+- **Visão de Mesa de Poker**: Uma interface imersiva que exibe os participantes dispostos em uma mesa circular, com o moderador ao centro.
+- **Feedback de Voto Visual**: Quando um participante vota, seu card na mesa acende com sua cor pessoal, oferecendo um feedback visual e instantâneo de quem já votou.
 - **Controle Total da Votação**: Iniciar uma nova votação, revelar os votos de todos e limpar a rodada para a próxima estimativa.
 - **Gerenciamento de Participantes**: O moderador pode remover participantes da sala a qualquer momento.
-- **Painel de Acompanhamento**: Visualize em tempo real quem já votou e quem ainda está pendente.
-- **Visualização de Resultados**: Ao revelar, o sistema exibe uma tabela com os votos individuais e destaca o voto mais popular.
 
 ### A Visão do Participante
-
 - **Interface de Votação Intuitiva**: Uma pirâmide de cartas representa as opções de voto.
 - **Feedback Instantâneo**: A carta selecionada é destacada imediatamente.
 - **Avatar Pessoal**: O avatar do próprio participante é destacado na lista para fácil identificação.
