@@ -161,9 +161,7 @@ export function RoomClientView({
   return (
     <div className="grid lg:grid-cols-[1fr_300px] gap-6">
       <div className="space-y-6">
-        {activeStory && !activeStory.is_revealed ? (
-          <VotingCards userVote={currentUserVote} onVote={handleVote} />
-        ) : (
+        {!activeStory || activeStory.is_revealed ? (
           <div className="text-center py-12 px-4 rounded-lg bg-card border shadow-sm">
             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 to-blue-500">
               {activeStory?.is_revealed
@@ -176,6 +174,8 @@ export function RoomClientView({
                 : "Pegue um café ☕️ e aguarde o moderador iniciar a votação."}
             </p>
           </div>
+        ) : (
+          <VotingCards userVote={currentUserVote} onVote={handleVote} />
         )}
       </div>
       <aside>
