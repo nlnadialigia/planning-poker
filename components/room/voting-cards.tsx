@@ -1,27 +1,39 @@
-"use client"
+"use client";
 
-import { Brain, Coffee } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
+import { Brain, Coffee } from "lucide-react";
 
-const VOTING_CARDS = ["1", "2", "3", "5", "8", "13", "?", "☕️"]
+const VOTING_CARDS = ["1", "2", "3", "5", "8", "13", "?", "☕️"];
 
 interface VotingCardsProps {
-  userVote: string | null
-  onVote: (value: string) => void
+  userVote: string | null;
+  onVote: (value: string) => void;
 }
 
-export function VotingCards({ userVote, onVote }: VotingCardsProps) {
+type IconMap = {
+  [key: string]: React.ReactElement;
+};
+
+export function VotingCards({ userVote, onVote }: Readonly<VotingCardsProps>) {
   const pyramid = [
     VOTING_CARDS.slice(0, 1),
     VOTING_CARDS.slice(1, 3),
     VOTING_CARDS.slice(3, 6),
     VOTING_CARDS.slice(6, 8),
-  ]
+  ];
+
+  const iconMap: IconMap = {
+    "?": <Brain className="w-8 h-8 md:w-10 md:h-10" />,
+    "☕️": <Coffee className="w-8 h-8 md:w-10 md:h-10 text-amber-500" />,
+  };
 
   return (
     <div className="flex flex-col items-center gap-2 sm:gap-3 py-4 sm:py-8">
       {pyramid.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex justify-center gap-2 sm:gap-3">
+        <div
+          key={`${row[0]}-${rowIndex}`}
+          className="flex justify-center gap-2 sm:gap-3"
+        >
           {row.map((card) => (
             <button
               key={card}
@@ -31,20 +43,14 @@ export function VotingCards({ userVote, onVote }: VotingCardsProps) {
                 "hover:scale-105 hover:shadow-xl active:scale-95",
                 userVote === card
                   ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105"
-                  : "bg-card text-card-foreground border-border hover:border-primary",
+                  : "bg-card text-card-foreground border-border hover:border-primary"
               )}
             >
-              {card === "?" ? (
-                <Brain className="w-8 h-8 md:w-10 md:h-10" />
-              ) : card === "☕️" ? (
-                <Coffee className="w-8 h-8 md:w-10 md:h-10 text-amber-500" />
-              ) : (
-                card
-              )}
+              {iconMap[card] ?? card}
             </button>
           ))}
         </div>
       ))}
     </div>
-  )
+  );
 }

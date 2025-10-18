@@ -1,12 +1,13 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users } from "lucide-react";
-import { ParticipantsList } from "./participants-list";
+import { PokerTable } from "./poker-table";
 
 interface Participant {
   id: string;
   name: string;
+  color: string;
+  is_moderator: boolean;
 }
 
 interface Vote {
@@ -24,7 +25,6 @@ interface ModeratorDashboardProps {
 }
 
 export function ModeratorDashboard({
-  roomId,
   participants,
   voterIds,
   isRevealed,
@@ -85,30 +85,16 @@ export function ModeratorDashboard({
     );
   }
 
-  // --- VISTA DE ACOMPANHAMENTO ---
+  // --- VISTA DE ACOMPANHAMENTO (MESA DE POKER) ---
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-          <Users className="w-6 h-6" />
-          Acompanhamento da Votação
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground mb-4">
-          Aguarde os participantes votarem. Você verá um check (✓) ao lado do
-          nome de quem já votou.
-        </p>
-        <div className="rounded-lg border bg-background p-4">
-          <ParticipantsList
-            roomId={roomId}
-            participants={participants}
-            voterIds={voterIds}
-            isModerator={true}
-            currentParticipantId={currentParticipantId}
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="pt-4">
+      <div className="w-[600px] h-[400px] mx-auto bg-primary/20 rounded-full">
+        <PokerTable
+          participants={participants}
+          voterIds={voterIds}
+          currentParticipantId={currentParticipantId}
+        />
+      </div>
+    </div>
   );
 }

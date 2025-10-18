@@ -1,32 +1,27 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { createRoom } from "@/app/actions/rooms"
+import { createRoom } from "@/app/actions/create-rooms";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FormState } from "@/types/room.types";
+import { Plus } from "lucide-react";
+import { useActionState } from "react";
+import { SubmitButton } from "../ui/submit-button";
+
+const initialState: FormState = {
+  error: "",
+  success: false,
+};
 
 export function CreateRoomForm() {
-  const [error, setError] = useState<string>("")
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true)
-    setError("")
-
-    const result = await createRoom(formData)
-
-    if (result?.error) {
-      setError(result.error)
-      setLoading(false)
-    } else if (result?.success) {
-      router.push(`/room/${result.roomId}?pid=${result.participantId}`)
-    }
-  }
+  const [state, formAction] = useActionState(createRoom, initialState);
 
   return (
     <Card>
@@ -35,10 +30,12 @@ export function CreateRoomForm() {
           <Plus className="w-5 h-5" />
           Criar Nova Sala
         </CardTitle>
-        <CardDescription>Crie uma sala e receba um código para compartilhar com seu time</CardDescription>
+        <CardDescription>
+          Crie uma sala e receba um código para compartilhar com seu time
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="roomName">Nome da Sala</Label>
             <Input
@@ -46,13 +43,17 @@ export function CreateRoomForm() {
               name="roomName"
               placeholder="Sprint Planning - Time Alpha"
               required
-              disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="userName">Seu Nome</Label>
-            <Input id="userName" name="userName" placeholder="João Silva" required disabled={loading} />
+            <Input
+              id="userName"
+              name="userName"
+              placeholder="João Silva"
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -62,21 +63,23 @@ export function CreateRoomForm() {
               name="moderatorPassword"
               type="password"
               placeholder="••••••••"
-              disabled={loading}
               required
             />
             <p className="text-xs text-muted-foreground">
-              Se a sala já existir, você precisará da senha para entrar como moderador.
+              Se a sala já existir, você precisará da senha para entrar como
+              moderador.
             </p>
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {state.error && (
+            <p className="text-sm text-destructive">{state.error}</p>
+          )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Criando..." : "Criar Sala"}
-          </Button>
+          <SubmitButton loadingText="Criando..." className="w-full">
+            Criar Sala
+          </SubmitButton>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,35 +1,18 @@
 "use client";
 
-import { submitVote } from "@/app/actions/rooms";
+import { submitVote } from "@/app/actions/vote";
+import { useRoomQuery } from "@/lib/hooks/use-room-query";
 import { createClient } from "@/lib/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ModeratorControls } from "./moderator-controls";
 import { ModeratorDashboard } from "./moderator-dashboard";
 import { ParticipantsList } from "./participants-list";
 import { VotingCards } from "./voting-cards";
 
-interface Story {
-  id: string;
-  is_revealed: boolean;
-}
-
-interface Participant {
-  id: string;
-  name: string;
-  is_moderator: boolean;
-}
-
-interface Vote {
-  participant_id: string;
-  value: string;
-  participants: { name: string };
-}
-
 interface RoomClientViewProps {
   roomId: string;
-  initialStory: Story | null;
-  initialVotes: Vote[];
-  initialParticipants: Participant[];
   participantId: string;
   isModerator: boolean;
   userName: string;
@@ -37,106 +20,88 @@ interface RoomClientViewProps {
 
 export function RoomClientView({
   roomId,
-  initialStory,
-  initialVotes,
-  initialParticipants,
   participantId,
   isModerator,
   userName,
 }: Readonly<RoomClientViewProps>) {
-  const [activeStory, setActiveStory] = useState<Story | null>(initialStory);
-  const [votes, setVotes] = useState<Vote[]>(initialVotes);
-  const [participants, setParticipants] =
-    useState<Participant[]>(initialParticipants);
-  const [currentUserVote, setCurrentUserVote] = useState<string | null>(() => {
-    return (
-      initialVotes.find((v) => v.participants.name === userName)?.value || null
-    );
-  });
-  const supabase = createClient();
+  const queryClient = useQueryClient();
+  const { data: roomState, isLoading, isError, error } = useRoomQuery(roomId);
 
-  const fetchRoomState = useCallback(async () => {
-    const { data: participantData } = await supabase
-      .from("participants")
-      .select("id, name, is_moderator")
-      .eq("room_id", roomId);
-    setParticipants(participantData || []);
+  const [currentUserVote, setCurrentUserVote] = useState<string | null>(null);
 
-    const { data: storyData } = await supabase
-      .from("stories")
-      .select("id, is_revealed")
-      .eq("room_id", roomId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    setActiveStory(storyData);
-
-    if (storyData) {
-      const { data: votesData } = await supabase
-        .from("votes")
-        .select("value, participant_id, participants(name)")
-        .eq("story_id", storyData.id);
-      setVotes((votesData as any[]) || []);
-      const userVote =
-        votesData?.find((v: any) => v.participants.name === userName)?.value ||
-        null;
-      setCurrentUserVote(userVote);
-    } else {
-      setVotes([]);
-      setCurrentUserVote(null);
-    }
-  }, [roomId, supabase, userName]);
-
+  // Todos os hooks são chamados aqui, no topo.
   useEffect(() => {
+    const supabase = createClient();
     const channel = supabase
       .channel(`room-realtime:${roomId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "stories" },
-        fetchRoomState
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "votes" },
-        fetchRoomState
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "participants" },
-        fetchRoomState
-      )
+      .on("postgres_changes", { event: "*", schema: "public" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["room", roomId] });
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchRoomState, roomId, supabase]);
+  }, [queryClient, roomId]);
+
+  useEffect(() => {
+    if (roomState) {
+      const userVote =
+        roomState.votes.find(
+          (v) => v.participants && v.participants.name === userName
+        )?.value || null;
+      setCurrentUserVote(userVote);
+    }
+  }, [roomState, userName]);
 
   const handleVote = useCallback(
     async (value: string) => {
       setCurrentUserVote(value);
-      if (activeStory) {
+      if (roomState?.activeStory) {
         const formData = new FormData();
-        formData.append("storyId", activeStory.id);
+        formData.append("storyId", roomState.activeStory.id);
         formData.append("participantId", participantId);
         formData.append("value", value);
         formData.append("roomId", roomId);
         await submitVote(formData);
+        queryClient.invalidateQueries({ queryKey: ["room", roomId] });
       }
     },
-    [activeStory, participantId, roomId]
+    [roomState?.activeStory, participantId, roomId, queryClient]
   );
 
-  const voterIds = new Set(votes.map((v) => v.participant_id));
-
-  // Ordena a lista de participantes antes de renderizar
   const sortedParticipants = useMemo(() => {
-    return [...participants].sort((a, b) => {
+    if (!roomState?.participants) return [];
+    return [...roomState.participants].sort((a, b) => {
       if (a.is_moderator && !b.is_moderator) return -1;
       if (!a.is_moderator && b.is_moderator) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [participants]);
+  }, [roomState?.participants]);
+
+  // --- Lógica de Renderização ---
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="text-muted-foreground">Carregando sala...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-destructive">
+        <p>Ocorreu um erro ao carregar a sala:</p>
+        <p className="font-mono text-sm">{error?.message}</p>
+      </div>
+    );
+  }
+
+  // A desestruturação e as variáveis derivadas agora estão depois dos 'returns'.
+  const { activeStory, votes = [] } = roomState || {};
+  const voterIds = new Set(votes.map((v) => v.participant_id));
 
   if (isModerator) {
     return (

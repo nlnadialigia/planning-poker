@@ -1,6 +1,6 @@
 "use client";
 
-import { removeParticipant } from "@/app/actions/rooms";
+import { removeParticipant } from "@/app/actions/participant";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

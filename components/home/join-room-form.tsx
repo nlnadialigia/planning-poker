@@ -1,7 +1,6 @@
 "use client";
 
-import { joinRoom } from "@/app/actions/rooms";
-import { Button } from "@/components/ui/button";
+import { joinRoom } from "@/app/actions/join-rooms";
 import {
   Card,
   CardContent,
@@ -11,28 +10,18 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormState } from "@/types/room.types";
 import { LogIn } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState } from "react";
+import { SubmitButton } from "../ui/submit-button";
+
+const initialState: FormState = {
+  error: "",
+  success: false,
+};
 
 export function JoinRoomForm() {
-  const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    setError("");
-
-    const result = await joinRoom(formData);
-
-    if (result?.error) {
-      setError(result.error);
-      setLoading(false);
-    } else if (result?.success) {
-      router.push(`/room/${result.roomId}?pid=${result.participantId}`);
-    }
-  }
+  const [state, formAction] = useActionState(joinRoom, initialState);
 
   return (
     <Card>
@@ -46,7 +35,7 @@ export function JoinRoomForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="code">Código da Sala</Label>
             <Input
@@ -54,7 +43,6 @@ export function JoinRoomForm() {
               name="code"
               placeholder="ABC123"
               required
-              disabled={loading}
               className="uppercase"
               maxLength={6}
             />
@@ -67,20 +55,16 @@ export function JoinRoomForm() {
               name="userName"
               placeholder="Maria Santos"
               required
-              disabled={loading}
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {state.error && (
+            <p className="text-sm text-destructive">{state.error}</p>
+          )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            // variant="secondary"
-            disabled={loading}
-          >
-            {loading ? "Entrando..." : "Entrar na Sala"}
-          </Button>
+          <SubmitButton loadingText="Entrando..." className="w-full">
+            Entrar na Sala
+          </SubmitButton>
         </form>
       </CardContent>
     </Card>
