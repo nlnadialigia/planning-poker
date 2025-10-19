@@ -94,21 +94,3 @@ export async function joinRoom(
   revalidatePath("/");
   redirect(`/room/${room.id}?pid=${participant.id}`);
 }
-
-export async function leaveRoom(formData: FormData) {
-  const supabase = await createServerClient();
-  const roomId = formData.get("roomId") as string;
-  const participantId = formData.get("participantId") as string;
-  if (!participantId) {
-    return { error: "ID do participante não encontrado." };
-  }
-  const { error } = await supabase
-    .from("participants")
-    .delete()
-    .eq("id", participantId);
-  if (error) {
-    return { error: "Erro ao sair da sala: " + error.message };
-  }
-  revalidatePath(`/room/${roomId}`);
-  return { success: true };
-}

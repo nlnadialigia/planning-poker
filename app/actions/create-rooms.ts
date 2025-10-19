@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/supabase/server";
 import { FormState } from "@/types/room.types";
+import { redirect } from "next/navigation";
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -10,6 +11,50 @@ function generateRoomCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+}
+
+async function createNewRoom(
+  supabase: any,
+  roomName: string,
+  userName: string,
+  moderatorPassword: string
+): Promise<{ roomId: string; participantId: string }> {
+  const roomCode = generateRoomCode();
+  const { data: room, error: roomError } = await supabase
+    .from("rooms")
+    .insert({
+      name: roomName,
+      code: roomCode,
+      moderator_password: moderatorPassword,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (roomError) {
+    throw new Error(`Falha ao criar a sala. Erro: ${roomError.message}`);
+  }
+
+  if (!room) {
+    throw new Error("Falha ao criar a sala. Nenhuma sala criada.");
+  }
+
+  const { data: participant, error: participantError } = await supabase
+    .from("participants")
+    .insert({
+      room_id: room.id,
+      name: userName,
+      is_moderator: true,
+    })
+    .select("id")
+    .single();
+
+  if (participantError) {
+    throw new Error("Falha ao adicionar o moderador à sala.");
+  }
+
+  return { roomId: room.id, participantId: participant.id };
 }
 
 export async function createRoom(
@@ -30,42 +75,64 @@ export async function createRoom(
     return { success: false, error: validationErrors.join(", ") };
   }
 
-  const existingRoom = await getExistingRoom(supabase, roomName);
-  if (existingRoom && existingRoom.moderator_password !== moderatorPassword) {
-    return {
-      success: false,
-      error: "Senha de moderador incorreta para esta sala.",
-    };
+  const { data: existingRoom, error: existingRoomError } =
+    await getExistingRoom(supabase, roomName);
+
+  if (existingRoomError && existingRoomError.code !== "PGRST116") {
+    return { success: false, error: "Erro ao verificar a sala." };
   }
 
-  const moderatorParticipant = await getModeratorParticipant(
-    supabase,
-    existingRoom.id,
-    userName
-  );
-  if (moderatorParticipant) {
-    return {
-      success: false,
-      error: "Esta sala já possui um moderador com um nome diferente.",
-    };
+  if (existingRoom) {
+    if (existingRoom.moderator_password !== moderatorPassword) {
+      return {
+        success: false,
+        error: "Senha de moderador incorreta para esta sala.",
+      };
+    }
+
+    const { data: participant, error: participantError } = await supabase
+      .from("participants")
+      .select("id")
+      .eq("room_id", existingRoom.id)
+      .eq("name", userName)
+      .eq("is_moderator", true)
+      .single();
+
+    if (participantError || !participant) {
+      const { data: newParticipant, error: newParticipantError } =
+        await supabase
+          .from("participants")
+          .insert({
+            room_id: existingRoom.id,
+            name: userName,
+            is_moderator: true,
+          })
+          .select("id")
+          .single();
+
+      if (newParticipantError) {
+        return {
+          success: false,
+          error: "Falha ao adicionar o moderador à sala.",
+        };
+      }
+      redirect(`/room/${existingRoom.id}?pid=${newParticipant.id}`);
+    }
+
+    redirect(`/room/${existingRoom.id}?pid=${participant.id}`);
   }
 
-  const participantNameExists = await doesParticipantNameExist(
-    supabase,
-    existingRoom.id,
-    userName
-  );
-  if (participantNameExists) {
-    return { success: false, error: "Este nome já está em uso nesta sala." };
+  try {
+    const { roomId, participantId } = await createNewRoom(
+      supabase,
+      roomName,
+      userName,
+      moderatorPassword
+    );
+    redirect(`/room/${roomId}?pid=${participantId}`);
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
-
-  const roomId = await createNewRoom(
-    supabase,
-    roomName,
-    userName,
-    moderatorPassword
-  );
-  return { success: true, roomId };
 }
 
 function validateInputFields(
@@ -86,53 +153,4 @@ async function getExistingRoom(supabase: any, roomName: string): Promise<any> {
     .select("id, moderator_password")
     .eq("name", roomName)
     .single();
-}
-
-async function getModeratorParticipant(
-  supabase: any,
-  roomId: string,
-  userName: string
-): Promise<any> {
-  return await supabase
-    .from("participants")
-    .select("id, name")
-    .eq("room_id", roomId)
-    .eq("is_moderator", true)
-    .eq("name", userName)
-    .single();
-}
-
-async function doesParticipantNameExist(
-  supabase: any,
-  roomId: string,
-  userName: string
-): Promise<boolean> {
-  return await supabase
-    .from("participants")
-    .select("id")
-    .eq("room_id", roomId)
-    .eq("name", userName)
-    .limit(1)
-    .count()
-    .then(({ count }: any) => count > 0);
-}
-
-async function createNewRoom(
-  supabase: any,
-  roomName: string,
-  userName: string,
-  moderatorPassword: string
-): Promise<string> {
-  const roomId = generateRoomCode();
-  await supabase.from("rooms").insert({
-    id: roomId,
-    name: roomName,
-    moderator_password: moderatorPassword,
-    is_active: true,
-    is_revealed: false,
-    active_story_id: null,
-    created_at: new Date().toISOString(),
-    created_by: userName,
-  });
-  return roomId;
 }
