@@ -1,6 +1,6 @@
 "use client";
 
-import { leaveRoom } from "@/app/actions/join-rooms";
+import { leaveRoom } from "@/app/actions/leave-room";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
