@@ -21,8 +21,6 @@ export default async function RoomPage(props: RoomPageProps) {
     return notFound();
   }
 
-  // A única busca que o servidor faz agora é validar o participante atual.
-  // Todo o resto do estado da sala será buscado no cliente pelo React Query.
   const { data: participant, error: participantError } = await supabase
     .from("participants")
     .select("id, name, is_moderator")

@@ -11,14 +11,12 @@ import { Link2, Users, Zap } from "lucide-react";
 export default function HomePage() {
   return (
     <div className="bg-gradient-to-br from-background via-background to-muted">
-      {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-2 flex items-center justify-center">
           <h1 className="text-4xl text-primary font-bold">Planning Poker</h1>
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="container mx-auto px-4 py-6">
         <div className="max-w-5xl mx-auto space-y-6">
           <p className="text-lg text-center text-muted-foreground text-pretty">
@@ -26,7 +24,6 @@ export default function HomePage() {
             Sem cadastro, sem complicação.
           </p>
 
-          {/* Forms */}
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <CreateRoomForm />
             <JoinRoomForm />
@@ -34,7 +31,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
