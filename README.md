@@ -1,16 +1,19 @@
 # Planning Poker
 
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=plastic&logo=nextdotjs&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=plastic&logo=react&logoColor=61DAFB)
+![Next.js](https://img.shields.io/badge/Next.js-16.1.6-000000?style=plastic&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19.2.4-20232A?style=plastic&logo=react&logoColor=61DAFB)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=plastic&logo=supabase&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=plastic&logo=tailwind-css&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=plastic&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1.18-38B2AC?style=plastic&logo=tailwind-css&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-007ACC?style=plastic&logo=typescript&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green?style=plastic)
 
 <p align="center">
   <a href="#-sobre-o-projeto">Sobre o Projeto</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-funcionalidades-principais">Funcionalidades</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#️-tecnologias-utilizadas">Tecnologias</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#-arquitetura">Arquitetura</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-como-rodar-o-projeto">Como Rodar</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#-estrutura-do-projeto">Estrutura</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-autora">Autora</a>
 </p>
 
@@ -46,14 +49,20 @@ O projeto utiliza o Supabase para gerenciar o banco de dados e as funcionalidade
 ## 🛠️ Tecnologias Utilizadas
 
 - **Frontend**:
-  - [Next.js](https://nextjs.org/) (com App Router)
-  - [React](https://react.dev/)
-  - [Tailwind CSS](https://tailwindcss.com/)
-  - [shadcn/ui](https://ui.shadcn.com/) para componentes
+  - [Next.js 16.1.6](https://nextjs.org/) (App Router + Server Actions)
+  - [React 19.2.4](https://react.dev/)
+  - [Tailwind CSS 4.1.18](https://tailwindcss.com/)
+  - [shadcn/ui](https://ui.shadcn.com/) + [Radix UI](https://www.radix-ui.com/) para componentes
+  - [TanStack Query 5.90.20](https://tanstack.com/query) para gerenciamento de estado
+  - [Lucide React](https://lucide.dev/) para ícones
 - **Backend e Banco de Dados**:
-  - [Supabase](https://supabase.com/) (PostgreSQL, Realtime, Auth)
+  - [Supabase](https://supabase.com/) (PostgreSQL + Realtime)
+  - [Prisma 7.3.0](https://www.prisma.io/) (ORM - em preparação)
 - **Linguagem**:
-  - [TypeScript](https://www.typescriptlang.org/)
+  - [TypeScript 5.9.3](https://www.typescriptlang.org/)
+- **Deploy**:
+  - [Vercel](https://vercel.com/)
+  - [Vercel Analytics](https://vercel.com/analytics)
 
 ## ⚙️ Como Rodar o Projeto
 
@@ -87,11 +96,9 @@ Siga os passos abaixo para configurar e executar o projeto em seu ambiente local
     b. Crie um arquivo `.env.local` na raiz do projeto e adicione as chaves do seu projeto Supabase:
 
     ```bash
-    # Para o cliente (navegador)
+    # Supabase Configuration
     NEXT_PUBLIC_SUPABASE_URL=https://SEU_PROJETO_URL.supabase.co
     NEXT_PUBLIC_SUPABASE_ANON_KEY=SUA_CHAVE_ANONIMA_PUBLICA
-
-    # Para o servidor (Server Actions)
     SUPABASE_URL=https://SEU_PROJETO_URL.supabase.co
     SUPABASE_ANON_KEY=SUA_CHAVE_ANONIMA_PUBLICA
     ```
@@ -104,6 +111,59 @@ Siga os passos abaixo para configurar e executar o projeto em seu ambiente local
     ```
 
 Abra [http://localhost:3000](http://localhost:3000) em seu navegador para ver a aplicação funcionando.
+
+### 🌐 [Acesse a aplicação aqui](https://planning-poker-nl.vercel.app/)
+
+## 📐 Arquitetura
+
+### Estrutura de Pastas
+
+```
+planning-poker/
+├── app/                      # Next.js App Router
+│   ├── actions/             # Server Actions
+│   │   ├── create-rooms.ts  # Criação de salas
+│   │   ├── join-rooms.ts    # Entrada em salas
+│   │   ├── vote.ts          # Sistema de votação
+│   │   ├── leave-room.ts    # Saída de participantes
+│   │   └── participant.ts   # Gerenciamento de participantes
+│   ├── room/[id]/           # Página dinâmica da sala
+│   ├── layout.tsx           # Layout principal
+│   ├── page.tsx             # Página inicial
+│   └── globals.css          # Estilos globais
+├── components/              # Componentes React
+│   ├── home/               # Componentes da home
+│   ├── room/               # Componentes da sala
+│   ├── providers/          # Context providers
+│   └── ui/                 # Componentes UI (shadcn)
+├── lib/                    # Utilitários e configurações
+│   ├── hooks/             # Custom hooks
+│   ├── supabase/          # Cliente Supabase
+│   └── utils.ts           # Funções auxiliares
+├── scripts/               # Scripts SQL do banco
+├── types/                 # Definições TypeScript
+└── public/               # Arquivos estáticos
+```
+
+### Fluxo de Dados
+
+1. **Criação de Sala**: Server Action → Supabase → Redirect
+2. **Entrada na Sala**: Server Action → Validação → Supabase → Redirect
+3. **Votação**: Client → Server Action → Supabase → Realtime Broadcast
+4. **Atualização em Tempo Real**: Supabase Realtime → TanStack Query → UI Update
+
+### Banco de Dados (Supabase PostgreSQL)
+
+**Tabelas principais:**
+- `rooms`: Salas de votação
+- `participants`: Participantes das salas
+- `stories`: Histórias/tarefas para votação
+- `votes`: Votos dos participantes
+
+**Recursos:**
+- Row Level Security (RLS) com políticas públicas
+- Realtime habilitado para sincronização instantânea
+- Índices otimizados para performance
 
 ### 🌐 [Acesse a aplicação aqui](https://planning-poker-nl.vercel.app/)
 

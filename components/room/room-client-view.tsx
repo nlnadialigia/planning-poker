@@ -1,15 +1,15 @@
 "use client";
 
-import { submitVote } from "@/app/actions/vote";
-import { useRoomQuery } from "@/lib/hooks/use-room-query";
-import { createClient } from "@/lib/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ModeratorControls } from "./moderator-controls";
-import { ModeratorDashboard } from "./moderator-dashboard";
-import { ParticipantsList } from "./participants-list";
-import { VotingCards } from "./voting-cards";
+import {submitVote} from "@/app/actions/vote";
+import {useRoomQuery} from "@/lib/hooks/use-room-query";
+import {pusherClient} from "@/lib/pusher/client";
+import {useQueryClient} from "@tanstack/react-query";
+import {Loader2} from "lucide-react";
+import {useCallback, useEffect, useMemo, useState} from "react";
+import {ModeratorControls} from "./moderator-controls";
+import {ModeratorDashboard} from "./moderator-dashboard";
+import {ParticipantsList} from "./participants-list";
+import {VotingCards} from "./voting-cards";
 
 interface RoomClientViewProps {
   roomId: string;
@@ -25,22 +25,19 @@ export function RoomClientView({
   userName,
 }: Readonly<RoomClientViewProps>) {
   const queryClient = useQueryClient();
-  const { data: roomState, isLoading, isError, error } = useRoomQuery(roomId);
+  const {data: roomState, isLoading, isError, error} = useRoomQuery(roomId, participantId);
 
   const [currentUserVote, setCurrentUserVote] = useState<string | null>(null);
 
-  // Todos os hooks são chamados aqui, no topo.
+  // Pusher Realtime
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`room-realtime:${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["room", roomId] });
-      })
-      .subscribe();
+    const channel = pusherClient.subscribe(`room-${roomId}`);
+    channel.bind("room-updated", () => {
+      queryClient.invalidateQueries({queryKey: ["room", roomId]});
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      pusherClient.unsubscribe(`room-${roomId}`);
     };
   }, [queryClient, roomId]);
 
@@ -48,7 +45,7 @@ export function RoomClientView({
     if (roomState) {
       const userVote =
         roomState.votes.find(
-          (v) => v.participants && v.participants.name === userName
+          (v: any) => v.participants && v.participants.name === userName
         )?.value || null;
       setCurrentUserVote(userVote);
     }
@@ -64,7 +61,7 @@ export function RoomClientView({
         formData.append("value", value);
         formData.append("roomId", roomId);
         await submitVote(formData);
-        queryClient.invalidateQueries({ queryKey: ["room", roomId] });
+        queryClient.invalidateQueries({queryKey: ["room", roomId]});
       }
     },
     [roomState?.activeStory, participantId, roomId, queryClient]
@@ -100,8 +97,8 @@ export function RoomClientView({
   }
 
   // A desestruturação e as variáveis derivadas agora estão depois dos 'returns'.
-  const { activeStory, votes = [] } = roomState || {};
-  const voterIds = new Set(votes.map((v) => v.participant_id));
+  const {activeStory, votes = []} = roomState || {};
+  const voterIds = new Set<string>(votes.map((v: any) => v.participant_id));
 
   if (isModerator) {
     return (
