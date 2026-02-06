@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Room {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @unique
+  code              String   @unique
+  moderatorPassword String   @map("moderator_password")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  participants Participant[]
+  stories      Story[]
+
+  @@map("rooms")
+}
+
+model Participant {
+  id          String   @id @default(uuid()) @db.Uuid
+  roomId      String   @map("room_id") @db.Uuid
+  name        String
+  color       String?
+  isModerator Boolean  @default(false) @map("is_moderator")
+  joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  room  Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  votes Vote[]
+
+  @@index([roomId])
+  @@index([roomId, isModerator])
+  @@map("participants")
+}
+
+model Story {
+  id          String   @id @default(uuid()) @db.Uuid
+  roomId      String   @map("room_id") @db.Uuid
+  title       String
+  description String?
+  isRevealed  Boolean  @default(false) @map("is_revealed")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  room  Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  votes Vote[]
+
+  @@index([roomId])
+  @@index([roomId, isRevealed])
+  @@map("stories")
+}
+
+model Vote {
+  id            String   @id @default(uuid()) @db.Uuid
+  storyId       String   @map("story_id") @db.Uuid
+  participantId String   @map("participant_id") @db.Uuid
+  value         String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  story       Story       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, participantId])
+  @@index([storyId])
+  @@index([participantId])
+  @@map("votes")
+}

@@ -46,3 +46,6 @@ pnpm-workspace.yaml
 
 # rascunho
 rascunho
+
+# prisma
+generated

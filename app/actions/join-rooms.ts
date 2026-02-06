@@ -1,9 +1,11 @@
 "use server";
 
-import { createServerClient } from "@/lib/supabase/server";
-import { FormState } from "@/types/room.types";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import {pusherServer} from "@/lib/pusher/server";
+import {participantService} from "@/lib/services/participant.service";
+import {roomService} from "@/lib/services/room.service";
+import {FormState} from "@/types/room.types";
+import {revalidatePath} from "next/cache";
+import {redirect} from "next/navigation";
 
 function generateParticipantColor(): string {
   const h = Math.floor(Math.random() * 360);
@@ -32,8 +34,7 @@ export async function joinRoom(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = await createServerClient();
-  const code = (formData.get("code") as string).toUpperCase();
+  const code = (formData.get("code") as string)?.toUpperCase();
   const userName = formData.get("userName") as string;
 
   if (!code || !userName) {
@@ -43,54 +44,36 @@ export async function joinRoom(
     };
   }
 
-  const { data: room, error: roomError } = await supabase
-    .from("rooms")
-    .select("id")
-    .eq("code", code)
-    .eq("is_active", true)
-    .single();
+  try {
+    // 1. Buscar sala ativa pelo código
+    const room = await roomService.getRoomByCode(code);
 
-  if (roomError || !room) {
-    return { success: false, error: "Sala não encontrada ou inativa." };
-  }
+    if (!room || !room.isActive) {
+      return {success: false, error: "Sala não encontrada ou inativa."};
+    }
 
-  const { data: existingParticipant, error: nameCheckError } = await supabase
-    .from("participants")
-    .select("id")
-    .eq("room_id", room.id)
-    .eq("name", userName)
-    .limit(1)
-    .single();
+    // 2. Verificar se o nome já está em uso na sala
+    const nameTaken = await participantService.isNameTaken(room.id, userName);
 
-  if (nameCheckError && nameCheckError.code !== "PGRST116") {
-    return {
-      success: false,
-      error: "Erro ao verificar participante: " + nameCheckError.message,
-    };
-  }
+    if (nameTaken) {
+      return {success: false, error: "Este nome já está em uso nesta sala."};
+    }
 
-  if (existingParticipant) {
-    return { success: false, error: "Este nome já está em uso nesta sala." };
-  }
-
-  const { data: participant, error: participantError } = await supabase
-    .from("participants")
-    .insert({
-      room_id: room.id,
+    // 3. Adicionar participante
+    const participant = await participantService.addParticipant({
+      roomId: room.id,
       name: userName,
-      is_moderator: false,
+      isModerator: false,
       color: generateParticipantColor(),
-    })
-    .select("id")
-    .single();
+    });
 
-  if (participantError) {
-    return {
-      success: false,
-      error: "Erro ao entrar na sala: " + participantError.message,
-    };
+    await pusherServer.trigger(`room-${room.id}`, "room-updated", {});
+
+    revalidatePath("/");
+    redirect(`/room/${room.id}?pid=${participant.id}`);
+  } catch (error: any) {
+    if (error.message === "NEXT_REDIRECT") throw error;
+    console.error("Erro ao entrar na sala:", error);
+    return {success: false, error: "Falha ao entrar na sala."};
   }
-
-  revalidatePath("/");
-  redirect(`/room/${room.id}?pid=${participant.id}`);
 }
